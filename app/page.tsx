@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import MarkdownRenderer from './components/MarkdownRenderer';
 
 type ChatMode = 'normal' | 'deepthink' | 'websearch';
 
@@ -17,6 +18,7 @@ export default function Home() {
   const [mode, setMode] = useState<ChatMode>('normal');
   const [showThinking, setShowThinking] = useState<{ [key: number]: boolean }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -25,6 +27,15 @@ export default function Home() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // 停止生成
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +47,9 @@ export default function Home() {
     setInput('');
     setIsLoading(true);
 
+    // 创建新的 AbortController
+    abortControllerRef.current = new AbortController();
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -46,6 +60,7 @@ export default function Home() {
           message: currentInput,
           mode: mode
         }),
+        signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok) {
@@ -97,14 +112,21 @@ export default function Home() {
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: '抱歉，发生了错误，请重试。' },
-      ]);
+
+      // 如果是用户主动取消，不显示错误消息
+      if (error.name === 'AbortError') {
+        console.log('Request was aborted by user');
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: '抱歉，发生了错误，请重试。' },
+        ]);
+      }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -180,13 +202,17 @@ export default function Home() {
                     思考过程
                   </button>
                   {showThinking[index] && (
-                    <div className="text-13 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-12 rounded-8 whitespace-pre-wrap">
-                      {message.thinkingProcess}
+                    <div className="text-13 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-12 rounded-8">
+                      <MarkdownRenderer content={message.thinkingProcess} />
                     </div>
                   )}
                 </div>
               )}
-              <p className="text-15 whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
+              {message.role === 'user' ? (
+                <p className="text-15 whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
+              ) : (
+                <MarkdownRenderer content={message.content} className="text-15" />
+              )}
             </div>
           </div>
         ))}
@@ -216,13 +242,24 @@ export default function Home() {
             disabled={isLoading}
             className="flex-1 rounded-8 border border-gray-300 dark:border-gray-600 px-16 py-12 text-15 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
           />
-          <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className="px-24 py-12 bg-blue-500 text-white text-15 rounded-8 font-medium hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            发送
-          </button>
+          {isLoading ? (
+            <button
+              type="button"
+              onClick={handleStop}
+              className="px-24 py-12 bg-red-500 text-white text-15 rounded-8 font-medium hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors flex items-center gap-8"
+            >
+              <span className="inline-block w-16 h-16 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              停止
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              className="px-24 py-12 bg-blue-500 text-white text-15 rounded-8 font-medium hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              发送
+            </button>
+          )}
         </form>
       </footer>
     </div>

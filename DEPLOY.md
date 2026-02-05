@@ -138,11 +138,14 @@ cd deepseek-chat
 **方式2: 从本地上传**
 ```bash
 # 在本地机器上执行
-# 压缩项目文件(排除不必要的文件)
+# 压缩项目文件(排除不必要的文件和配置文件)
 tar -czf deepseek-chat.tar.gz \
   --exclude=node_modules \
   --exclude=.git \
   --exclude=.next \
+  --exclude=.env.local \
+  --exclude=ecosystem.config.js \
+  --exclude=logs \
   .
 
 # 上传到服务器
@@ -153,6 +156,10 @@ cd /var/www
 mkdir -p deepseek-chat
 tar -xzf deepseek-chat.tar.gz -C deepseek-chat
 cd deepseek-chat
+
+# ⚠️ 重要提示：解压后需要手动创建配置文件
+# 因为打包时已排除 .env.local 和 ecosystem.config.js
+# 请继续按照下面的步骤配置环境变量
 ```
 
 ### 3.3 安装项目依赖
@@ -1057,7 +1064,7 @@ pm2 logs deepseek-chat --lines 50
 
 **在本地机器上:**
 ```bash
-# 1. 打包最新代码(排除配置文件和构建产物)
+# 1. 打包最新代码(排除配置文件和构建产物) ⚠️ 非常重要！
 tar -czf deepseek-chat-update.tar.gz \
   --exclude=node_modules \
   --exclude=.git \
@@ -1065,6 +1072,7 @@ tar -czf deepseek-chat-update.tar.gz \
   --exclude=.env.local \
   --exclude=ecosystem.config.js \
   --exclude=logs \
+  --exclude=deepseek-chat.tar.gz \
   .
 
 # 2. 上传到服务器
