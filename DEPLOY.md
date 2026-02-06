@@ -2081,7 +2081,11 @@ cp ecosystem.config.js /tmp/ecosystem.config.js.backup
 # 5. 解压新代码
 tar -xzf /tmp/deepseek-chat-update.tar.gz
 
-# 6. 重新构建和重启
+# 6. 清除 npm 缓存 重新构建和重启
+  npm cache clean --force
+  # 删除 node_modules 和 package-lock.json
+  rm -rf node_modules package-lock.json .next
+
 npm install
 npm run build
 pm2 restart deepseek-chat
