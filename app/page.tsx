@@ -112,11 +112,11 @@ export default function Home() {
           }
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error:', error);
 
       // 如果是用户主动取消，不显示错误消息
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         console.log('Request was aborted by user');
       } else {
         setMessages((prev) => [
@@ -130,16 +130,19 @@ export default function Home() {
     }
   };
 
+  // 判断发送按钮是否可用
+  const canSend = input.trim().length > 0 && !isLoading;
+
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-16 py-12">
-        <h1 className="text-20 font-bold text-gray-800 dark:text-white mb-8">
+    <div className="fixed inset-0 flex flex-col bg-gray-50 dark:bg-gray-900">
+      <header className="flex-shrink-0 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 py-3 md:px-6 md:py-4 z-10">
+        <h1 className="text-lg md:text-xl font-bold text-gray-800 dark:text-white mb-2 md:mb-3">
           DeepSeek Chat
         </h1>
-        <div className="flex gap-8">
+        <div className="flex gap-2 md:gap-3">
           <button
             onClick={() => setMode('normal')}
-            className={`flex-1 py-8 px-12 rounded-8 text-14 font-medium transition-all ${
+            className={`flex-1 py-2 px-3 md:py-2.5 md:px-4 rounded-lg text-sm font-medium transition-all ${
               mode === 'normal'
                 ? 'bg-blue-500 text-white shadow-md'
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -149,7 +152,7 @@ export default function Home() {
           </button>
           <button
             onClick={() => setMode('deepthink')}
-            className={`flex-1 py-8 px-12 rounded-8 text-14 font-medium transition-all ${
+            className={`flex-1 py-2 px-3 md:py-2.5 md:px-4 rounded-lg text-sm font-medium transition-all ${
               mode === 'deepthink'
                 ? 'bg-purple-500 text-white shadow-md'
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -159,7 +162,7 @@ export default function Home() {
           </button>
           <button
             onClick={() => setMode('websearch')}
-            className={`flex-1 py-8 px-12 rounded-8 text-14 font-medium transition-all ${
+            className={`flex-1 py-2 px-3 md:py-2.5 md:px-4 rounded-lg text-sm font-medium transition-all ${
               mode === 'websearch'
                 ? 'bg-green-500 text-white shadow-md'
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -170,11 +173,11 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-16 py-12 space-y-12">
+      <div className="flex-1 overflow-y-auto overscroll-none px-4 py-3 md:px-6 md:py-4 space-y-3 md:space-y-4">
         {messages.length === 0 && (
-          <div className="text-center text-gray-500 dark:text-gray-400 mt-80">
-            <p className="text-18">欢迎使用 DeepSeek Chat!</p>
-            <p className="mt-8 text-14">选择模式后开始对话吧</p>
+          <div className="text-center text-gray-500 dark:text-gray-400 mt-20 md:mt-32">
+            <p className="text-base md:text-lg">欢迎使用 DeepSeek Chat!</p>
+            <p className="mt-2 text-sm md:text-base">选择模式后开始对话吧</p>
           </div>
         )}
 
@@ -186,32 +189,32 @@ export default function Home() {
             }`}
           >
             <div
-              className={`max-w-[85%] rounded-12 px-16 py-12 ${
+              className={`max-w-[85%] md:max-w-[75%] rounded-xl px-3 py-2.5 md:px-4 md:py-3 ${
                 message.role === 'user'
                   ? 'bg-blue-500 text-white'
                   : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white shadow-md'
               }`}
             >
               {message.role === 'assistant' && message.thinkingProcess && (
-                <div className="mb-12 pb-12 border-b border-gray-200 dark:border-gray-700">
+                <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
                   <button
                     onClick={() => setShowThinking(prev => ({ ...prev, [index]: !prev[index] }))}
-                    className="flex items-center gap-8 text-14 text-purple-600 dark:text-purple-400 font-medium mb-8"
+                    className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400 font-medium mb-2"
                   >
                     <span>{showThinking[index] ? '▼' : '▶'}</span>
                     思考过程
                   </button>
                   {showThinking[index] && (
-                    <div className="text-13 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-12 rounded-8">
+                    <div className="text-xs md:text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
                       <MarkdownRenderer content={message.thinkingProcess} />
                     </div>
                   )}
                 </div>
               )}
               {message.role === 'user' ? (
-                <p className="text-15 whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
+                <p className="text-sm md:text-base whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
               ) : (
-                <MarkdownRenderer content={message.content} className="text-15" />
+                <MarkdownRenderer content={message.content} className="text-sm md:text-base" />
               )}
             </div>
           </div>
@@ -219,11 +222,11 @@ export default function Home() {
 
         {isLoading && messages[messages.length - 1]?.role === 'user' && (
           <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-12 px-16 py-12 bg-white dark:bg-gray-800 shadow-md">
-              <div className="flex space-x-8">
-                <div className="w-8 h-8 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-8 h-8 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-8 h-8 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            <div className="max-w-[85%] md:max-w-[75%] rounded-xl px-3 py-2.5 md:px-4 md:py-3 bg-white dark:bg-gray-800 shadow-md">
+              <div className="flex space-x-2">
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               </div>
             </div>
           </div>
@@ -232,35 +235,43 @@ export default function Home() {
         <div ref={messagesEndRef} />
       </div>
 
-      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-16 py-12">
-        <form onSubmit={handleSubmit} className="flex gap-12">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="输入你的问题..."
-            disabled={isLoading}
-            className="flex-1 rounded-8 border border-gray-300 dark:border-gray-600 px-16 py-12 text-15 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
-          />
-          {isLoading ? (
-            <button
-              type="button"
-              onClick={handleStop}
-              className="px-24 py-12 bg-red-500 text-white text-15 rounded-8 font-medium hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors flex items-center gap-8"
-            >
-              <span className="inline-block w-16 h-16 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              停止
-            </button>
-          ) : (
-            <button
-              type="submit"
-              disabled={!input.trim()}
-              className="px-24 py-12 bg-blue-500 text-white text-15 rounded-8 font-medium hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              发送
-            </button>
-          )}
-        </form>
+      <footer className="flex-shrink-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-10">
+        <div className="px-3 py-3 md:px-6 md:py-4 safe-area-inset-bottom">
+          <div className="max-w-4xl mx-auto">
+            <form onSubmit={handleSubmit} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="输入你的问题..."
+                disabled={isLoading}
+                className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2.5 text-[16px] focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50"
+                style={{ fontSize: '16px' }}
+              />
+              {isLoading ? (
+                <button
+                  type="button"
+                  onClick={handleStop}
+                  className="flex-shrink-0 w-[60px] h-[42px] md:w-auto md:h-auto md:px-5 md:py-2.5 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 active:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors flex items-center justify-center"
+                >
+                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!canSend}
+                  className={`flex-shrink-0 w-[60px] h-[42px] md:w-auto md:h-auto md:px-5 md:py-2.5 rounded-lg font-medium focus:outline-none focus:ring-2 transition-colors ${
+                    canSend
+                      ? 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 focus:ring-blue-500 cursor-pointer'
+                      : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  发送
+                </button>
+              )}
+            </form>
+          </div>
+        </div>
       </footer>
     </div>
   );

@@ -43,10 +43,26 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// 定义用户数据类型
+interface UserData {
+  id: string;
+  name: string;
+  avatar: string;
+  role: string;
+  department: string;
+  email: string;
+  phone: string;
+  joinDate: string;
+  status: string;
+  level: string;
+  skills: string[];
+  projects: Array<{ name: string; role: string; status: string }>;
+}
+
 // Mock 数据生成函数
-function getMockDataById(id: string) {
+function getMockDataById(id: string): UserData {
   // 根据不同的 id 返回不同的数据
-  const mockDatabase: Record<string, any> = {
+  const mockDatabase: Record<string, UserData> = {
     '1': {
       id: '1',
       name: '张三',

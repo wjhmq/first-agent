@@ -42,6 +42,12 @@ button {
   font-family: inherit;
 }
 
+/* 防止 iOS Safari 输入框自动缩放 */
+input,
+textarea {
+  font-size: 16px !important;
+}
+
 button {
   cursor: pointer;
   user-select: none;
@@ -108,6 +114,21 @@ button {
 
   .safe-area-inset-right {
     padding-right: env(safe-area-inset-right);
+  }
+
+  /* 防止过度滚动 */
+  .overscroll-none {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* 移动端键盘优化 */
+@media (max-width: 768px) {
+  /* 确保在键盘弹出时视口高度正确 */
+  .fixed.inset-0 {
+    height: 100vh;
+    height: 100dvh; /* 使用动态视口高度 */
   }
 }
 

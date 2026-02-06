@@ -2,6 +2,8 @@
 
 本文档详细说明如何将 DeepSeek Chat 应用部署到阿里云服务器。
 
+> 📌 **更新提示：** 如果您的服务已经部署，需要更新代码，请查看 [UPDATE_DEPLOY.md](./UPDATE_DEPLOY.md) 文档。
+
 ## 目录
 1. [服务器环境准备](#1-服务器环境准备)
 2. [安装必要软件](#2-安装必要软件)
@@ -10,6 +12,7 @@
 5. [配置 PM2 进程管理](#5-配置-pm2-进程管理)
 6. [配置域名和 SSL](#6-配置域名和-ssl-可选)
 7. [常用维护命令](#7-常用维护命令)
+8. [代码更新部署](#8-代码更新部署) ⭐ 新增
 
 ---
 
@@ -2031,5 +2034,187 @@ curl http://localhost:3000
 # 5. 测试外网访问
 curl http://your_server_ip
 ```
+
+---
+
+## 8. 代码更新部署
+
+### 8.1 概述
+
+当您的代码有更新需要重新部署时，**不需要重复完整的部署流程**。
+
+📖 **完整更新指南**: [UPDATE_DEPLOY.md](./UPDATE_DEPLOY.md)
+
+该文档提供了详细的更新步骤、自动化脚本和故障排查指南。
+
+### 8.2 快速更新流程
+
+#### 方式 1: 压缩包更新（推荐）
+
+**本地操作：**
+```bash
+# 1. 打包代码（排除配置文件）
+tar -czf deepseek-chat-update.tar.gz \
+  --exclude=node_modules \
+  --exclude=.git \
+  --exclude=.next \
+  --exclude=.env.local \
+  --exclude=ecosystem.config.js \
+  --exclude=logs \
+  --exclude=*.tar.gz \
+  .
+
+# 2. 上传到服务器
+scp deepseek-chat-update.tar.gz root@your_server_ip:/tmp/
+```
+
+**服务器操作：**
+```bash
+# 3. SSH 连接到服务器
+ssh root@your_server_ip
+
+# 4. 备份配置文件
+cd /var/www/deepseek-chat
+cp .env.local /tmp/.env.local.backup
+cp ecosystem.config.js /tmp/ecosystem.config.js.backup
+
+# 5. 解压新代码
+tar -xzf /tmp/deepseek-chat-update.tar.gz
+
+# 6. 重新构建和重启
+npm install
+npm run build
+pm2 restart deepseek-chat
+
+# 7. 验证
+pm2 logs deepseek-chat --lines 30
+```
+
+#### 方式 2: Git 更新
+
+```bash
+cd /var/www/deepseek-chat
+
+# 备份配置
+cp .env.local /tmp/.env.local.backup
+cp ecosystem.config.js /tmp/ecosystem.config.js.backup
+
+# 拉取更新
+git pull
+
+# 重新构建和重启
+npm install
+npm run build
+pm2 restart deepseek-chat
+```
+
+#### 方式 3: 自动化脚本
+
+详见 [UPDATE_DEPLOY.md](./UPDATE_DEPLOY.md) 中的完整自动化脚本。
+
+### 8.3 重要注意事项
+
+⚠️ **更新前必读**:
+
+1. **保护配置文件**
+   - 始终备份 `.env.local` 和 `ecosystem.config.js`
+   - 打包时排除这些文件（使用 `--exclude` 参数）
+   - 解压后验证配置文件是否存在
+
+2. **备份当前版本**
+   ```bash
+   tar -czf backup-$(date +%Y%m%d-%H%M%S).tar.gz \
+     --exclude=node_modules \
+     --exclude=.next \
+     deepseek-chat/
+   ```
+
+3. **验证更新成功**
+   ```bash
+   # 检查应用状态
+   pm2 list
+
+   # 查看日志
+   pm2 logs deepseek-chat --lines 50
+
+   # 浏览器访问测试
+   # https://your-domain.com
+   ```
+
+### 8.4 回滚操作
+
+如果更新出现问题：
+
+```bash
+# 1. 停止应用
+pm2 stop deepseek-chat
+
+# 2. 恢复备份
+cd /var/www
+rm -rf deepseek-chat
+tar -xzf backup-YYYYMMDD-HHMMSS.tar.gz
+
+# 3. 重启应用
+cd deepseek-chat
+pm2 restart deepseek-chat
+```
+
+### 8.5 常见问题
+
+**Q: 更新后配置文件丢失？**
+```bash
+# 恢复备份的配置文件
+cp /tmp/.env.local.backup /var/www/deepseek-chat/.env.local
+cp /tmp/ecosystem.config.js.backup /var/www/deepseek-chat/ecosystem.config.js
+pm2 restart deepseek-chat
+```
+
+**Q: 构建失败？**
+```bash
+# 清除缓存重新构建
+rm -rf .next node_modules
+npm install
+npm run build
+```
+
+**Q: 应用无法启动？**
+```bash
+# 查看详细日志
+pm2 logs deepseek-chat --lines 100
+
+# 检查端口占用
+lsof -i :3000
+
+# 检查配置文件
+cat .env.local
+```
+
+### 8.6 最佳实践
+
+1. **定期备份**
+   - 每次更新前备份
+   - 保留最近 7 天的备份
+   - 备份配置文件到项目外目录
+
+2. **测试后部署**
+   - 本地测试无误后再部署
+   - 先在测试环境验证
+   - 准备回滚方案
+
+3. **零停机更新**
+   ```bash
+   # 使用 PM2 reload 而不是 restart
+   pm2 reload deepseek-chat
+   ```
+
+4. **监控日志**
+   ```bash
+   # 更新后持续监控日志
+   pm2 logs deepseek-chat -f
+   ```
+
+📚 **完整文档**: 查看 [UPDATE_DEPLOY.md](./UPDATE_DEPLOY.md) 获取更详细的说明、自动化脚本和故障排查指南。
+
+---
 
 祝部署顺利!

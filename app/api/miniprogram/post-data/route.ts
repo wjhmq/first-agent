@@ -43,10 +43,19 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// 定义响应数据类型
+interface ResponseData {
+  [key: string]: unknown;
+  userId: string;
+  createTime: string;
+  message: string;
+  submittedData: Record<string, unknown>;
+}
+
 // Mock 响应数据生成函数
-function getMockResponseById(id: string, otherData: any) {
+function getMockResponseById(id: string, otherData: Record<string, unknown>): ResponseData {
   // 根据不同的 id 返回不同的处理结果
-  const mockResponses: Record<string, any> = {
+  const mockResponses: Record<string, ResponseData> = {
     '1': {
       orderId: `ORD${Date.now()}`,
       userId: id,

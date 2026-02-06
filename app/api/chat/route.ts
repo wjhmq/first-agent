@@ -57,6 +57,8 @@ export async function POST(req: NextRequest) {
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
+    let upstreamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+
     const stream = new ReadableStream({
       async start(controller) {
         const reader = response.body?.getReader();
@@ -65,11 +67,17 @@ export async function POST(req: NextRequest) {
           return;
         }
 
+        upstreamReader = reader;
+
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) {
-              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+              try {
+                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+              } catch (e) {
+                // 控制器已关闭，忽略错误
+              }
               controller.close();
               break;
             }
@@ -81,7 +89,6 @@ export async function POST(req: NextRequest) {
               if (line.startsWith('data: ')) {
                 const data = line.slice(6);
                 if (data === '[DONE]') {
-                  controller.enqueue(encoder.encode('data: [DONE]\n\n'));
                   continue;
                 }
 
@@ -98,32 +105,75 @@ export async function POST(req: NextRequest) {
                         type: 'thinking',
                         content: reasoningContent
                       });
-                      controller.enqueue(encoder.encode(`data: ${sseData}\n\n`));
+                      try {
+                        controller.enqueue(encoder.encode(`data: ${sseData}\n\n`));
+                      } catch (e) {
+                        // 控制器已关闭（用户取消），停止处理
+                        await reader.cancel();
+                        return;
+                      }
                     }
 
                     if (content) {
                       const sseData = JSON.stringify({ content });
-                      controller.enqueue(encoder.encode(`data: ${sseData}\n\n`));
+                      try {
+                        controller.enqueue(encoder.encode(`data: ${sseData}\n\n`));
+                      } catch (e) {
+                        // 控制器已关闭（用户取消），停止处理
+                        await reader.cancel();
+                        return;
+                      }
                     }
                   } else {
                     // 普通模式和联网搜索模式
                     const content = parsed.choices?.[0]?.delta?.content;
                     if (content) {
                       const sseData = JSON.stringify({ content });
-                      controller.enqueue(encoder.encode(`data: ${sseData}\n\n`));
+                      try {
+                        controller.enqueue(encoder.encode(`data: ${sseData}\n\n`));
+                      } catch (e) {
+                        // 控制器已关闭（用户取消），停止处理
+                        await reader.cancel();
+                        return;
+                      }
                     }
                   }
                 } catch (e) {
-                  console.error('Error parsing chunk:', e);
+                  // 忽略 JSON 解析错误
                 }
               }
             }
           }
         } catch (error) {
-          console.error('Stream error:', error);
-          controller.error(error);
+          // 只在不是中止错误时记录
+          if (error instanceof Error && error.message !== 'Controller is already closed') {
+            console.error('Stream error:', error);
+          }
+          try {
+            controller.error(error);
+          } catch (e) {
+            // 控制器已关闭，忽略
+          }
+        } finally {
+          // 确保 reader 被释放
+          try {
+            await reader.cancel();
+          } catch (e) {
+            // 忽略取消错误
+          }
+          upstreamReader = null;
         }
       },
+      async cancel() {
+        // 当客户端取消流时调用
+        if (upstreamReader) {
+          try {
+            await upstreamReader.cancel();
+          } catch (e) {
+            // 忽略取消错误
+          }
+        }
+      }
     });
 
     return new Response(stream, {
